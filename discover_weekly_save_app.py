@@ -1,11 +1,15 @@
+import os
 import spotipy
+from dotenv import load_dotenv
 from spotipy.oauth2 import SpotifyOAuth
 from datetime import datetime
 
+load_dotenv()
+
 # Set up Spotify API credentials and authentication
-scope = "user-read-recently-played user-top-read playlist-modify-private"
-client_id = "78a4698f20204bc6a14509b82dd8b954"
-client_secret = "edde5b5b8f72476fa787a4ee8a84d0b9"
+scope = "playlist-modify-private"
+client_id = os.getenv("SPOTIFY_CLIENT_ID")
+client_secret = os.getenv("SPOTIFY_CLIENT_SECRET")
 redirect_uri = "http://localhost:8888/callback"
 sp = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=scope, client_id=client_id, client_secret=client_secret, redirect_uri=redirect_uri))
 
@@ -19,22 +23,24 @@ user_id = sp.current_user()['id']
 # Get playlist information
 try:
     playlist = sp.playlist(playlist_id, fields='name,tracks')
-except spotipy.exceptions.SpotifyException as e:
+except spotipy.SpotifyException as e:
     if e.http_status == 404:
         print("Playlist not found.")
-        exit()
     else:
-        raise e
+        print(f"Error: {str(e)}")
+    exit()
 
 playlist_name = playlist['name']
+tracks = playlist['tracks']['items']
+
+# Get the last updated date
 last_updated = playlist['tracks']['items'][0]['added_at'].split('T')[0]
 
 # Create a new playlist with the name "Discover Weekly - Last Updated Date"
-new_playlist_name = f"{playlist_name} - {last_updated}"
+new_playlist_name = f"Discover Weekly - {last_updated}"
 new_playlist = sp.user_playlist_create(user=user_id, name=new_playlist_name, public=False)
 
-# Get all tracks from the original playlist
-tracks = playlist['tracks']['items']
+# Get all track IDs from the original playlist
 track_ids = [track['track']['id'] for track in tracks]
 
 # Add tracks to the new playlist
